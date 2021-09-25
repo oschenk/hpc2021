@@ -4,7 +4,7 @@
 
 CC = gcc
 OPT = -O2
-CFLAGS = -Wall -std=gnu99 $(OPT)
+CFLAGS = -Wall -std=gnu99 $(OPT) -g
 LDFLAGS = -Wall
 # librt is needed for clock_gettime
 LDLIBS = -lrt -Wl,--no-as-needed -L${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl -m64 -I${MKLROOT}/include

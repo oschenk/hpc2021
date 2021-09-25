@@ -67,18 +67,33 @@ static inline void compute_for_block_combination(int n, double *A, double *B,
 
 static void blocked_dgemm(int n, double *A, double *B, double *C,
                           int block_size) {
-  transpose_square(n, A);
-  for (int i = 0; i < n; i += block_size) {
-    const register int u = min(block_size, n - i);
-    for (int j = 0; j < n; j += block_size) {
-      const register int w = min(block_size, n - j);
-      for (int k = 0; k < n; k += block_size) {
-        const register int v = min(block_size, n - k);
-        compute_for_block_combination(n, A, B, C, i, k, k, j, i, j, u, v, w);
+  // Iterate through all possible valid submatrix combinations.
+  // Then we need to compute `C'=C'+A'*B'` for each selection. The naive
+  // formula would be:
+  //   `C[i][j] += A[i][k] * B[k][j]`
+  // However, the matrices are in column-major format (i.e. `X[i+1][j]` is next
+  // to `X[i][j]` in memory, but `X[i][j+1]` is far away). So, we want to
+  // iterate over `i` in the innermost loop to keep temporaly close accesses
+  // also spacially close.
+  for (register int k = 0; k < n; k += block_size) {
+    const register int kl = min(k + block_size, n);
+    for (register int j = 0; j < n; j += block_size) {
+      const register int jl = min(j + block_size, n);
+      for (register int i = 0; i < n; i += block_size) {
+        const register int il = min(i + block_size, n);
+        for (register int kk = k; kk < kl; ++kk) {
+          register double *const a_start = A + kk * n;
+          for (register int jj = j; jj < jl; ++jj) {
+            register double *const c_start = C + jj * n;
+            const register double b_kj = B[kk + jj * n];
+            for (register int ii = i; ii < il; ++ii) {
+              c_start[ii] += a_start[ii] * b_kj;
+            }
+          }
+        }
       }
     }
   }
-  transpose_square(n, A);
 }
 
 static void naive_dgemm(int n, double *A, double *B, double *C) {
@@ -87,31 +102,14 @@ static void naive_dgemm(int n, double *A, double *B, double *C) {
     /* For each column j of B */
     for (int j = 0; j < n; ++j) {
       /* Compute C(i,j) */
-      double cij = C[colmajor(n, i, j)];
+      double cij = C[i + j * n];
       for (int k = 0; k < n; k++)
-        cij += A[colmajor(n, i, k)] * B[colmajor(n, k, j)];
-      C[colmajor(n, i, j)] = cij;
+        cij += A[i + k * n] * B[k + j * n];
+      C[i + j * n] = cij;
     }
 }
 
-static void single_file_dgemm(int n, double *A, double *B, double *C) {
-  transpose_square(n, A);
-  for (int i = 0; i < n; ++i) {
-    const int a_start = rowmajor(n, i, 0);
-    for (int j = 0; j < n; ++j) {
-      const int b_start = colmajor(n, 0, j);
-      int c_at = colmajor(n, i, j);
-      double cij = C[c_at];
-      for (int k = 0; k < n; k++) {
-        cij += A[a_start + k] * B[b_start + k];
-      }
-      C[c_at] = cij;
-    }
-  }
-  transpose_square(n, A);
-}
-
-const char *dgemm_desc = "Optimized dgemm [pratyai/blocked].";
+const char *dgemm_desc = "Blocked dgemm [pratyai].";
 
 /* This routine performs a dgemm operation
  *  C := C + A * B

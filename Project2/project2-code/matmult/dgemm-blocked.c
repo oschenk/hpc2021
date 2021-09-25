@@ -17,56 +17,40 @@ $(MKLROOT)/lib/intel64/libmkl_sequential.a $(MKLROOT)/lib/intel64/libmkl_core.a
 
 */
 
-const char *dgemm_desc = "Naive, three-loop dgemm.";
+#include <stdio.h>
 
-/* This routine performs a dgemm operation
- *  C := C + A * B
- * where A, B, and C are lda-by-lda matrices stored in column-major format.
- * On exit, A and B maintain their input values. */
-void square_dgemm(int n, double *A, double *B, double *C) {
-  // TODO: Implement the blocking optimization
-
-  /* For each row i of A */
-  for (int i = 0; i < n; ++i)
-    /* For each column j of B */
-    for (int j = 0; j < n; ++j) {
-      /* Compute C(i,j) */
-      double cij = C[i + j * n];
-      for (int k = 0; k < n; k++)
-        cij += A[i + k * n] * B[k + j * n];
-      C[i + j * n] = cij;
-    }
-}
+int min(int u, int v) { return u < v ? u : v; }
 
 int at(int n, int i, int j) { return i + j * n; }
 
-// C[uxw] += A[uxv] * B[vxw]
+short debug = 0;
+
+// C[uw] += A[uv] * B[vw]
 // Assumption: the array boundaries are sane.
 void compute_for_subblock(int n, double *A, double *B, double *C, int rA,
                           int cA, int rB, int cB, int rC, int cC, int u, int v,
                           int w) {
+  if (debug)
+    printf("%d | A[%d,%d] B[%d,%d] C[%d,%d] | uv[%dx%d].vw[%dx%d]\n", n, rA, cA,
+           rB, cB, rC, cC, u, v, v, w);
   for (int i = 0; i < u; ++i) {
     for (int j = 0; j < w; ++j) {
       double c_ij = C[at(n, rC + i, cC + j)];
-      for (int k = 0; k < v; ++v) {
+      for (int k = 0; k < v; ++k) {
         c_ij += A[at(n, rA + i, cA + k)] * B[at(n, rB + k, cB + j)];
       }
-      C[at(n, i, j)] = c_ij;
+      C[at(n, rC + i, cC + j)] = c_ij;
     }
   }
 }
 
-void compute_for_block_combinations(int n, double *A, double *B, double *C,
-                                    int block_size) {
+void blocked_dgemm(int n, double *A, double *B, double *C, int block_size) {
   for (int i = 0; i < n; i += block_size) {
     for (int j = 0; j < n; j += block_size) {
       for (int k = 0; k < n; k += block_size) {
-        compute_for_subblock(n, A, B, C, i * block_size, k * block_size,
-                             k * block_size, j * block_size, i * block_size,
-                             j * block_size,
-                             min(block_size, n - i * block_size),
-                             min(block_size, n - k * block_size),
-                             min(block_size, n - j * block_size));
+        compute_for_subblock(n, A, B, C, i, k, k, j, i, j,
+                             min(block_size, n - i), min(block_size, n - k),
+                             min(block_size, n - j));
       }
     }
   }
@@ -78,9 +62,28 @@ void naive_dgemm(int n, double *A, double *B, double *C) {
     /* For each column j of B */
     for (int j = 0; j < n; ++j) {
       /* Compute C(i,j) */
-      double cij = C[i + j * n];
+      double cij = C[at(n, i, j)];
       for (int k = 0; k < n; k++)
-        cij += A[i + k * n] * B[k + j * n];
-      C[i + j * n] = cij;
+        cij += A[at(n, i, k)] * B[at(n, k, j)];
+      C[at(n, i, j)] = cij;
     }
+}
+
+const char *dgemm_desc = "Optimized dgemm [pratyai/blocked].";
+
+/* This routine performs a dgemm operation
+ *  C := C + A * B
+ * where A, B, and C are lda-by-lda matrices stored in column-major format.
+ * On exit, A and B maintain their input values. */
+void square_dgemm(int n, double *A, double *B, double *C) {
+  blocked_dgemm(n, A, B, C, 16);
+  // naive_dgemm(n, A, B, C);
+  if (debug)
+    for (int i = 0; i < n; ++i) {
+      for (int j = 0; j < n; ++j) {
+        printf("%+2.1f ", C[at(n, i, j)]);
+      }
+      printf("\n");
+    }
+  debug = 0;
 }

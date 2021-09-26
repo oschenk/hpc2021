@@ -56,17 +56,17 @@ static void blocked_dgemm(int n, double *A, double *B, double *C,
   // iterate over `i` in the innermost loop to keep temporaly close accesses
   // also spacially close.
   transpose_square(n, A);
-  for (int j = 0; j < n; j += block_size) {
-    const int jl = min(j + block_size, n);
-    for (int i = 0; i < n; i += block_size) {
-      const int il = min(i + block_size, n);
+  for (int i = 0; i < n; i += block_size) {
+    const int il = min(i + block_size, n);
+    for (int j = 0; j < n; j += block_size) {
+      const int jl = min(j + block_size, n);
       for (int k = 0; k < n; k += block_size) {
         const int kl = min(k + block_size, n);
         for (int ii = i; ii < il; ++ii) {
           for (int jj = j; jj < jl; ++jj) {
             double c_ij = C[ii + jj * n];
             for (int kk = k; kk < kl; ++kk) {
-              c_ij += A[ii*n + kk] * B[kk + jj * n];
+              c_ij += A[ii * n + kk] * B[kk + jj * n];
             }
             C[ii + jj * n] = c_ij;
           }
@@ -98,5 +98,5 @@ const char *dgemm_desc = "Blocked dgemm [pratyai].";
  * On exit, A and B maintain their input values. */
 void square_dgemm(int n, double *A, double *B, double *C) {
   // naive_dgemm(n, A, B, C);
-  blocked_dgemm(n, A, B, C, 128);
+  blocked_dgemm(n, A, B, C, 10);
 }

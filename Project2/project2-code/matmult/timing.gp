@@ -17,4 +17,11 @@ set output "timing.ps"
 
 plot "timing_basic_dgemm.data"   using 2:4 title "Naive dgemm" with linespoints, \
      "timing_blocked_dgemm.data" using 2:4 title "Blocked dgemm" with linespoints, \
-     "timing_blas_dgemm.data"   using 2:4 title "MKL blas dgemm" with linespoints
+     "timing_blas_dgemm.data"   using 2:4 title "MKL blas dgemm" with linespoints, \
+     "timing_blocked_dgemm_2.data" using 2:4 title "Blocked dgemm/2" with linespoints, \
+     "timing_blocked_dgemm_4.data" using 2:4 title "Blocked dgemm/4" with linespoints, \
+     "timing_blocked_dgemm_8.data" using 2:4 title "Blocked dgemm/8" with linespoints, \
+     "timing_blocked_dgemm_16.data" using 2:4 title "Blocked dgemm/16" with linespoints, \
+     "timing_blocked_dgemm_32.data" using 2:4 title "Blocked dgemm/32" with linespoints, \
+     "timing_blocked_dgemm_64.data" using 2:4 title "Blocked dgemm/64" with linespoints, \
+     "timing_blocked_dgemm_128.data" using 2:4 title "Blocked dgemm/128" with linespoints,

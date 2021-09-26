@@ -24,6 +24,10 @@ $(MKLROOT)/lib/intel64/libmkl_sequential.a $(MKLROOT)/lib/intel64/libmkl_core.a
  * 3. `perf report`
  */
 
+#ifndef BLOCKSIZE
+  #define BLOCKSIZE 10
+#endif
+
 #include <stdio.h>
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
@@ -107,5 +111,5 @@ const char *dgemm_desc = "Blocked dgemm [pratyai].";
  * On exit, A and B maintain their input values. */
 void square_dgemm(int n, double *A, double *B, double *C) {
   // naive_dgemm(n, A, B, C);
-  blocked_dgemm(n, A, B, C, 10);
+  blocked_dgemm(n, A, B, C, BLOCKSIZE);
 }

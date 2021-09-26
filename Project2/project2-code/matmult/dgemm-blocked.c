@@ -17,6 +17,13 @@ $(MKLROOT)/lib/intel64/libmkl_sequential.a $(MKLROOT)/lib/intel64/libmkl_core.a
 
 */
 
+/*
+ * How to perf:
+ * 1. `make`
+ * 2. `perf record -e cycles,LLC-loads,LLC-load-misses,cache-references,cache-misses,branch-misses ./benchmark-blocked`
+ * 3. `perf report`
+ */
+
 #include <stdio.h>
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
@@ -56,13 +63,14 @@ static void blocked_dgemm(int n, double *A, double *B, double *C,
   // iterate over `i` in the innermost loop to keep temporaly close accesses
   // also spacially close.
   transpose_square(n, A);
+  // Open question: why swapping `i` and `j` loops makes it worse?
   for (int j = 0; j < n; j += block_size) {
     const int jl = min(j + block_size, n);
     for (int i = 0; i < n; i += block_size) {
       const int il = min(i + block_size, n);
       for (int k = 0; k < n; k += block_size) {
         const int kl = min(k + block_size, n);
-        // Open question: why swapping `ii` and `jj` loop makes it worse?
+        // Open question: why swapping `ii` and `jj` loops makes it worse?
         for (int ii = i; ii < il; ++ii) {
           for (int jj = j; jj < jl; ++jj) {
             double c_ij = C[ii + jj * n];

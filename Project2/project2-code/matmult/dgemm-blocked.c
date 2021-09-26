@@ -22,7 +22,7 @@ $(MKLROOT)/lib/intel64/libmkl_sequential.a $(MKLROOT)/lib/intel64/libmkl_core.a
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define swap(x, y)                                                             \
   {                                                                            \
-    double tmp = (x);                                                          \
+    register double tmp = (x);                                                          \
     (x) = (y);                                                                 \
     (y) = tmp;                                                                 \
   }
@@ -40,7 +40,7 @@ static inline void print(int n, double *X, short colmaj) {
 static inline void transpose_square(int n, double *X) {
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < i; ++j) {
-      swap(X[colmajor(n, i, j)], X[rowmajor(n, i, j)]);
+      swap(X[i + j * n], X[i * n + j]);
     }
   }
 }
@@ -56,12 +56,13 @@ static void blocked_dgemm(int n, double *A, double *B, double *C,
   // iterate over `i` in the innermost loop to keep temporaly close accesses
   // also spacially close.
   transpose_square(n, A);
-  for (int i = 0; i < n; i += block_size) {
-    const int il = min(i + block_size, n);
-    for (int j = 0; j < n; j += block_size) {
-      const int jl = min(j + block_size, n);
+  for (int j = 0; j < n; j += block_size) {
+    const int jl = min(j + block_size, n);
+    for (int i = 0; i < n; i += block_size) {
+      const int il = min(i + block_size, n);
       for (int k = 0; k < n; k += block_size) {
         const int kl = min(k + block_size, n);
+        // Open question: why swapping `ii` and `jj` loop makes it worse?
         for (int ii = i; ii < il; ++ii) {
           for (int jj = j; jj < jl; ++jj) {
             double c_ij = C[ii + jj * n];

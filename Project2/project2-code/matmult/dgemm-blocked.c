@@ -72,27 +72,26 @@ static void blocked_dgemm(int n, double *A, double *B, double *C) {
   static double *last_C = NULL;
 #endif
   // Partition each matrices into smaller subblocks.
-  for (int i = 0; i < n; i += BLOCKSIZE) {
-    const int ilim = min(n, i + BLOCKSIZE);
-    for (int j = 0; j < n; j += BLOCKSIZE) {
-      const int jlim = min(n, j + BLOCKSIZE);
+  for (int j = 0; j < n; j += BLOCKSIZE) {
+    const int jlim = min(n, j + BLOCKSIZE);
+    for (int i = 0; i < n; i += BLOCKSIZE) {
+      const int ilim = min(n, i + BLOCKSIZE);
       for (int k = 0; k < n; k += BLOCKSIZE) {
         const int klim = min(n, k + BLOCKSIZE);
         // And compute C_ij += A_ik * B_kj;
-        for (int ii = i; ii < ilim; ++ii) {
-          for (int jj = j; jj < jlim; ++jj) {
-#ifdef DEBUG
-              print_dist(&last_C, &C[ii + jj * n], "C");
-#endif
-            double c_ij = C[ii+jj*n];
-            for (int kk = k; kk < klim; ++kk) {
+        for (int jj = j; jj < jlim; ++jj) {
+          double *const c_xj = &C[jj * n];
+          for (int kk = k; kk < klim; ++kk) {
+            const double *const a_xk = &A[kk * n];
+            const double b_kj = B[kk + jj * n];
+            for (int ii = i; ii < ilim; ++ii) {
 #ifdef DEBUG
               print_dist(&last_A, &A[ii + kk * n], "A");
               print_dist(&last_B, &B[kk + jj * n], "B");
+              print_dist(&last_C, &C[ii + jj * n], "C");
 #endif
-              c_ij += A[ii + kk * n] * B[kk + jj * n];
+              c_xj[ii] += a_xk[ii] * b_kj;
             }
-            C[ii+jj*n] = c_ij;
           }
         }
       }

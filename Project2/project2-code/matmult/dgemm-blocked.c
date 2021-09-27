@@ -20,29 +20,31 @@ $(MKLROOT)/lib/intel64/libmkl_sequential.a $(MKLROOT)/lib/intel64/libmkl_core.a
 /*
  * How to perf:
  * 1. `make`
- * 2. `perf record -e cycles,LLC-loads,LLC-load-misses,cache-references,cache-misses,branch-misses ./benchmark-blocked`
+ * 2. `perf record -e
+ * cycles,LLC-loads,LLC-load-misses,cache-references,cache-misses,branch-misses
+ * ./benchmark-blocked`
  * 3. `perf report`
  */
 
-#ifndef BLOCKSIZE
-  #define BLOCKSIZE 10
+#ifndef CACHE_LINE_SIZE
+#define CACHE_LINE_SIZE 64 // Typically.
 #endif
+#define BLOCKSIZE (CACHE_LINE_SIZE / sizeof(double))
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define swap(x, y)                                                             \
   {                                                                            \
-    register double tmp = (x);                                                          \
+    register double tmp = (x);                                                 \
     (x) = (y);                                                                 \
     (y) = tmp;                                                                 \
   }
-static inline int colmajor(int n, int i, int j) { return i + j * n; }
-static inline int rowmajor(int n, int i, int j) { return i * n + j; }
 static inline void print(int n, double *X, short colmaj) {
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < n; ++j) {
-      printf("%+2.2lf ", X[colmaj ? colmajor(n, i, j) : rowmajor(n, i, j)]);
+      printf("%+2.2lf ", X[i + j * n]);
     }
     printf("\n");
   }
@@ -55,52 +57,47 @@ static inline void transpose_square(int n, double *X) {
     }
   }
 }
+static inline void print_dist(double **last, double *now,
+                              const char *const msg) {
+  printf("%s: %ld\n", msg, now - *last);
+  *last = now;
+}
 
-static void blocked_dgemm(int n, double *A, double *B, double *C,
-                          int block_size) {
-  // Iterate through all possible valid submatrix combinations.
-  // Then we need to compute `C'=C'+A'*B'` for each selection. The naive
-  // formula would be:
-  //   `C[i][j] += A[i][k] * B[k][j]`
-  // However, the matrices are in column-major format (i.e. `X[i+1][j]` is next
-  // to `X[i][j]` in memory, but `X[i][j+1]` is far away). So, we want to
-  // iterate over `i` in the innermost loop to keep temporaly close accesses
-  // also spacially close.
-  transpose_square(n, A);
-  // Open question: why swapping `i` and `j` loops makes it worse?
-  for (int j = 0; j < n; j += block_size) {
-    const int jl = min(j + block_size, n);
-    for (int i = 0; i < n; i += block_size) {
-      const int il = min(i + block_size, n);
-      for (int k = 0; k < n; k += block_size) {
-        const int kl = min(k + block_size, n);
-        // Open question: why swapping `ii` and `jj` loops makes it worse?
-        for (int ii = i; ii < il; ++ii) {
-          for (int jj = j; jj < jl; ++jj) {
-            double c_ij = C[ii + jj * n];
-            for (int kk = k; kk < kl; ++kk) {
-              c_ij += A[ii * n + kk] * B[kk + jj * n];
+// #define DEBUG 1
+
+static void blocked_dgemm(int n, double *A, double *B, double *C) {
+#ifdef DEBUG
+  static double *last_A = NULL;
+  static double *last_B = NULL;
+  static double *last_C = NULL;
+#endif
+  // Partition each matrices into smaller subblocks.
+  for (int i = 0; i < n; i += BLOCKSIZE) {
+    const int ilim = min(n, i + BLOCKSIZE);
+    for (int j = 0; j < n; j += BLOCKSIZE) {
+      const int jlim = min(n, j + BLOCKSIZE);
+      for (int k = 0; k < n; k += BLOCKSIZE) {
+        const int klim = min(n, k + BLOCKSIZE);
+        // And compute C_ij += A_ik * B_kj;
+        for (int ii = i; ii < ilim; ++ii) {
+          for (int jj = j; jj < jlim; ++jj) {
+#ifdef DEBUG
+              print_dist(&last_C, &C[ii + jj * n], "C");
+#endif
+            double c_ij = C[ii+jj*n];
+            for (int kk = k; kk < klim; ++kk) {
+#ifdef DEBUG
+              print_dist(&last_A, &A[ii + kk * n], "A");
+              print_dist(&last_B, &B[kk + jj * n], "B");
+#endif
+              c_ij += A[ii + kk * n] * B[kk + jj * n];
             }
-            C[ii + jj * n] = c_ij;
+            C[ii+jj*n] = c_ij;
           }
         }
       }
     }
   }
-  transpose_square(n, A);
-}
-
-static void naive_dgemm(int n, double *A, double *B, double *C) {
-  /* For each row i of A */
-  for (int i = 0; i < n; ++i)
-    /* For each column j of B */
-    for (int j = 0; j < n; ++j) {
-      /* Compute C(i,j) */
-      double cij = C[i + j * n];
-      for (int k = 0; k < n; k++)
-        cij += A[i + k * n] * B[k + j * n];
-      C[i + j * n] = cij;
-    }
 }
 
 const char *dgemm_desc = "Blocked dgemm [pratyai].";
@@ -110,6 +107,9 @@ const char *dgemm_desc = "Blocked dgemm [pratyai].";
  * where A, B, and C are lda-by-lda matrices stored in column-major format.
  * On exit, A and B maintain their input values. */
 void square_dgemm(int n, double *A, double *B, double *C) {
-  // naive_dgemm(n, A, B, C);
-  blocked_dgemm(n, A, B, C, BLOCKSIZE);
+  blocked_dgemm(n, A, B, C);
+  // if (n >= 480) exit(0);
+#ifdef DEBUG
+  exit(0);
+#endif
 }

@@ -39,11 +39,11 @@ $(MKLROOT)/lib/intel64/libmkl_sequential.a $(MKLROOT)/lib/intel64/libmkl_core.a
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define swap(x, y)                                                             \
   {                                                                            \
-    register double tmp = (x);                                                 \
+    const double tmp = (x);                                                    \
     (x) = (y);                                                                 \
     (y) = tmp;                                                                 \
   }
-static inline void print(int n, double *X, short colmaj) {
+void print(int n, double *X, short colmaj) {
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < n; ++j) {
       printf("%+2.2lf ", X[i + j * n]);
@@ -52,27 +52,23 @@ static inline void print(int n, double *X, short colmaj) {
   }
   printf("\n");
 }
-inline void transpose_square(const int n, double *X) {
+static inline void transpose_square(const int n, double *X) {
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < i; ++j) {
       swap(X[i + j * n], X[i * n + j]);
     }
   }
 }
-static inline void print_dist(double **last, double *now,
-                              const char *const msg) {
-  printf("%s: %ld\n", msg, now - *last);
-  *last = now;
+
+static inline void force(double *ptr) {
+  asm volatile("" : "=m"(*ptr) : "r"(*ptr));
 }
-
-// #define DEBUG 1
-
-void force(double *ptr) { asm volatile("" : "=m"(*ptr) : "r"(*ptr)); }
 
 void blocked_dgemm(const int n, double *A, double *B, double *C) {
   const int blocksize = BLOCKSIZE;
   transpose_square(n, A);
-  // Partition each matrices into smaller subblocks.
+  // Partition each matrices into smaller subblocks and consider each
+  // combination.
   for (int i = 0; i < n; i += blocksize) {
     const int ilim = min(n, i + blocksize);
     for (int j = 0; j < n; j += blocksize) {
@@ -110,7 +106,4 @@ const char *dgemm_desc = "Blocked dgemm [pratyai].";
  * On exit, A and B maintain their input values. */
 void square_dgemm(int n, double *A, double *B, double *C) {
   blocked_dgemm(n, A, B, C);
-#ifdef DEBUG
-  exit(0);
-#endif
 }

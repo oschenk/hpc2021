@@ -77,13 +77,16 @@ void blocked_dgemm(const int n, double *A, double *B, double *C) {
     const int ilim = min(n, i + blocksize);
     for (int j = 0; j < n; j += blocksize) {
       const int jlim = min(n, j + blocksize);
-      // And compute C_ij += A_ik * B_kj;
+      // Load B, C subblocks into cache by quickly scanning through them.
+      // Loading A doesn't have significant impact.
       for (int jj = j; jj < jlim; ++jj) {
-        force(&C[jj * n]);
         force(&B[jj * n]);
+        force(&C[jj * n]);
       }
       for (int k = 0; k < n; k += blocksize) {
         const int klim = min(n, k + blocksize);
+
+        // And partially compute for the current subblocks: C_ij += A_ik * B_kj.
         for (int ii = i; ii < ilim; ++ii) {
           for (int jj = j; jj < jlim; ++jj) {
             double c_ij = C[ii + jj * n];

@@ -26,10 +26,12 @@ $(MKLROOT)/lib/intel64/libmkl_sequential.a $(MKLROOT)/lib/intel64/libmkl_core.a
  * 3. `perf report`
  */
 
+#ifndef BLOCKSIZE
 #ifndef CACHE_LINE_SIZE
 #define CACHE_LINE_SIZE 64 // Typically.
 #endif
 #define BLOCKSIZE (CACHE_LINE_SIZE / sizeof(double))
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>

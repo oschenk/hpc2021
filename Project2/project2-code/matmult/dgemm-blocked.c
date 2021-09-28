@@ -69,11 +69,6 @@ static inline void print_dist(double **last, double *now,
 
 void blocked_dgemm(int n, double *A, double *B, double *C) {
   const int blocksize = BLOCKSIZE;
-#ifdef DEBUG
-  static double *last_A = NULL;
-  static double *last_B = NULL;
-  static double *last_C = NULL;
-#endif
   transpose_square(n, A);
   // Partition each matrices into smaller subblocks.
   for (int i = 0; i < n; i += blocksize) {
@@ -85,15 +80,8 @@ void blocked_dgemm(int n, double *A, double *B, double *C) {
         // And compute C_ij += A_ik * B_kj;
         for (int ii = i; ii < ilim; ++ii) {
           for (int jj = j; jj < jlim; ++jj) {
-#ifdef DEBUG
-            print_dist(&last_C, &C[ii + jj * n], "C");
-#endif
             double c_ij = C[ii + jj * n];
             for (int kk = k; kk < klim; ++kk) {
-#ifdef DEBUG
-              print_dist(&last_A, &A[ii * n + kk], "A");
-              print_dist(&last_B, &B[kk + jj * n], "B");
-#endif
               c_ij += A[ii * n + kk] * B[kk + jj * n];
             }
             C[ii + jj * n] = c_ij;

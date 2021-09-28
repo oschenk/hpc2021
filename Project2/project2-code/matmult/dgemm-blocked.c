@@ -52,7 +52,7 @@ static inline void print(int n, double *X, short colmaj) {
   }
   printf("\n");
 }
-inline void transpose_square(int n, double *X) {
+inline void transpose_square(const int n, double *X) {
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < i; ++j) {
       swap(X[i + j * n], X[i * n + j]);
@@ -67,7 +67,9 @@ static inline void print_dist(double **last, double *now,
 
 // #define DEBUG 1
 
-void blocked_dgemm(int n, double *A, double *B, double *C) {
+void force(double *ptr) { asm volatile("" : "=m"(*ptr) : "r"(*ptr)); }
+
+void blocked_dgemm(const int n, double *A, double *B, double *C) {
   const int blocksize = BLOCKSIZE;
   transpose_square(n, A);
   // Partition each matrices into smaller subblocks.
@@ -75,9 +77,13 @@ void blocked_dgemm(int n, double *A, double *B, double *C) {
     const int ilim = min(n, i + blocksize);
     for (int j = 0; j < n; j += blocksize) {
       const int jlim = min(n, j + blocksize);
+      // And compute C_ij += A_ik * B_kj;
+      for (int jj = j; jj < jlim; ++jj) {
+        force(&C[jj * n]);
+        force(&B[jj * n]);
+      }
       for (int k = 0; k < n; k += blocksize) {
         const int klim = min(n, k + blocksize);
-        // And compute C_ij += A_ik * B_kj;
         for (int ii = i; ii < ilim; ++ii) {
           for (int jj = j; jj < jlim; ++jj) {
             double c_ij = C[ii + jj * n];

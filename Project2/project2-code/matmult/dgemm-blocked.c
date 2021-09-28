@@ -46,7 +46,7 @@ $(MKLROOT)/lib/intel64/libmkl_sequential.a $(MKLROOT)/lib/intel64/libmkl_core.a
 void print(int n, double *X, short colmaj) {
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < n; ++j) {
-      printf("%+2.2lf ", X[i + j * n]);
+      printf("%+06.2lf ", X[i + j * n]);
     }
     printf("\n");
   }

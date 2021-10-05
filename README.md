@@ -7,7 +7,6 @@
 ## General information
 
 **Lecturers**   : [Olaf Schenk](mailto:oschenk@ethz.ch),
-
 **PostDocs**   :  [Pratyuksh Bansal](mailto:bansap@usi.ch),
                   [Juraj Kardos](mailto:juraj.kardos@usi.ch)
 **Assistants**  : [Malik Lechekhab](mailto:malik.lechekhab@usi.ch),
@@ -17,7 +16,7 @@
 
 **When** : Tuesday 4:30pm-6:15pm, Wednesday 2:30pm-4:15m
 
-**Where**: Room D.1.14 on Tuesday 4:30pm-6:15pm, Room D.1.15 on Wednesday 2:30pm-4:15m.
+**Where**: Room D.1.14 on Tuesday 4:30pm-6:15pm, Room D.1.15 on Wednesday 2:30pm-4:15p.m.
 and over MS Teams Meeting (https://teams.microsoft.com/l/team/19%3aJ-5PfZ8l3o9SLyIqbpzQ7P9lQ2mT39QS7UOWS1TMRzw1%40thread.tacv2/conversations?groupId=f604d0cc-e6df-437a-a9be-b497e080d1bb&tenantId=95bdc5ac-afb5-4881-801b-3874f365cd6f).
 
 **Online**: 

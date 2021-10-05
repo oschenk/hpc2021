@@ -11,7 +11,7 @@
 **PostDocs**   :  [Pratyuksh Bansal](mailto:bansap@usi.ch),
                   [Juraj Kardos](mailto:juraj.kardos@usi.ch)
 **Assistants**  : [Malik Lechekhab](mailto:malik.lechekhab@usi.ch),
-                  and [Tim Holt](mailto:timothy.holt@usi.ch),
+                  and [Timothy Holt](mailto:timothy.holt@usi.ch),
 
 **Slack list**: http:// hpc2021-inf-usi.slack.com
 
